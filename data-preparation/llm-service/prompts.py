@@ -1,86 +1,93 @@
 EXTRACT_SUBGRAPH_PROMPT = """
-Role: You are a forensic analyst. Parse the text below into a directed graph of entities and relationships.
+ROLE: Forensic analyst. Convert text into structured graph data.
 
-Rules:
-1. **Nodes**:
-   - Types: Vendor, Person, Tender, Official, Transaction, Law.
-   - Attributes: Add `irregularity=True` if involved in fraud (e.g., fake bids, undocumented cash).
-   - Assign unique IDs (e.g., "Vendor_1", "John_Doe").
+INSTRUCTIONS:
+1. ENTITIES:
+   - Types: Vendor|Tender|Person|Organization|Case
+   - Attributes:
+     * existence: BOOLEAN (true/false)
+     * role: owner/representative/investigator
+     * For vendors: irregularity=true if collusion suspected
+     * For tenders: winner, competitors[], amount=€X
+     * note: Key context (e.g., "supermarket in Prizren")
 
-2. **Edges**:
-   - Directed relationships with labels like "submitted_bid", "owns", "approved_by".
-   - Attributes: Include amounts (€), dates, or regulatory violations.
+2. RELATIONSHIPS:
+   - Labels: owns|submitted_bid|won|investigated|part_of_case|shares_address
+   - Attributes: amount=€X, date=YYYY-MM-DD when available
 
-3. **Output**: JSON with `{"nodes": [...], "edges": [...]}`. No explanations.
+3. OUTPUT: Strict JSON format. No markdown.
 
-Examples:
+EXAMPLE INPUT:
+"Vendor3 is a supermarket in Prizren. ITF investigation found no evidence of Vendor4."
 
-Text: "Vendor_1 (owned by John Doe) won Tender_A despite fake bids from Vendor_3."
-Output:
+EXAMPLE OUTPUT:
 {
-  "nodes": [
-    {"id": "Vendor_1", "type": "Vendor", "attributes": {"irregularity": true}},
-    {"id": "John_Doe", "type": "Person", "attributes": {"role": "owner"}},
-    {"id": "Tender_A", "type": "Tender"}
+  "entities": [
+    {
+      "id": "Vendor3", 
+      "type": "Vendor",
+      "attributes": {"existence": true, "note": "supermarket in Prizren"}
+    },
+    {
+      "id": "Vendor4", 
+      "type": "Vendor",
+      "attributes": {"existence": false}
+    },
+    {
+      "id": "ITF", 
+      "type": "Organization",
+      "attributes": {"role": "investigator"}
+    }
   ],
-  "edges": [
-    {"source": "John_Doe", "target": "Vendor_1", "label": "owns"},
-    {"source": "Vendor_1", "target": "Tender_A", "label": "won"},
-    {"source": "Vendor_3", "target": "Tender_A", "label": "submitted_fake_bid"}
+  "relationships": [
+    {
+      "source": "ITF", 
+      "target": "Vendor4", 
+      "label": "investigated"
+    }
   ]
 }
 
-Now parse this text:
+TEXT TO PARSE:
 """
 
 CROSS_REFERENCING_PROMPT = """
-Role: You are a forensic graph analyst. Determine if nodes from two documents refer to the same entity or have a meaningful relationship.
+ROLE: Forensic graph analyst. Find entity matches across documents.
 
-Rules:
-1. **Merge**: Same entity but different IDs (e.g., "Vendor_1" vs "Vendor1").
-2. **Link**: Related entities (e.g., "Official_A (PDF1) approved Tender_X (PDF2)").
-3. **Output**: JSON list of actions with evidence.
+RULES:
+1. MERGE if:
+   - Same entity (e.g., "Vendor_1" vs "Vendor1")
+   - Shared owner/address (e.g., "Vendor1 & 2 Rep")
+   - Same case reference (Case_286/04)
 
-Format:
-[
-  {
-    "type": "merge" | "link",
-    "node1": "id_from_pdf1",
-    "node2": "id_from_pdf2",
-    "confidence": 0.0-1.0,
-    "evidence": "Brief reason (e.g., same owner, shared tender ID)"
-  }
-]
+2. LINK if:
+   - Same tender across documents
+   - Investigative connections (ITF → Vendor3)
+   - Shared cluster context
 
-Examples:
+OUTPUT FORMAT:
+{
+  "operations": [
+    {
+      "type": "merge"|"link",
+      "entity1": "original_id",
+      "entity2": "new_id",
+      "confidence": 0.9,
+      "evidence": "Shared owner (John Doe)"
+    }
+  ]
+}
 
-Nodes from PDF1: [{"id": "Vendor_1", "type": "Vendor", "attributes": {"owner": "John_Doe"}}]
-Nodes from PDF2: [{"id": "Vendor1", "type": "Vendor", "attributes": {"owner": "John_Doe"}}]
-Output:
-[
-  {
-    "type": "merge",
-    "node1": "Vendor_1",
-    "node2": "Vendor1",
-    "confidence": 0.95,
-    "evidence": "Same owner (John_Doe)"
-  }
-]
-
-Nodes from PDF1: [{"id": "Official_A", "type": "Official"}]
-Nodes from PDF2: [{"id": "Tender_X", "type": "Tender"}]
-Output:
-[
-  {
-    "type": "link",
-    "node1": "Official_A",
-    "node2": "Tender_X",
-    "confidence": 0.8,
-    "evidence": "News reports state Official_A approved Tender_X"
-  }
-]
-
-Now analyze:
-Nodes from PDF1: {nodes_pdf1}
-Nodes from PDF2: {nodes_pdf2}
+EXAMPLE OUTPUT:
+{
+  "operations": [
+    {
+      "type": "merge",
+      "entity1": "Vendor_1_B2",
+      "entity2": "Vendor1_B3",
+      "confidence": 0.95,
+      "evidence": "Same address in Pristina, shared owner"
+    }
+  ]
+}
 """
