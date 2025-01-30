@@ -32,6 +32,10 @@ class Database:
             'cluster_id': cluster_id
         }).execute()
 
+    def get_all_documents(self):
+        """Fetches all documents."""
+        return self.client.table('documents').select('*').execute()
+    
     def get_all_pdf_documents(self):    
         """Fetches all documents of type 'pdf'."""
         return self.client.table('documents').select('*').eq('doc_type', 'pdf').execute()
