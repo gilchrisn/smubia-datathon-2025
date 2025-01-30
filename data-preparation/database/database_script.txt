@@ -13,28 +13,30 @@ CREATE TABLE clusters (
   description TEXT                   -- Context: "Collusion between Vendor 1/2 in airport tenders"
 );
 
--- 3. Entities (Vendors, Tenders, Persons, Organizations)
+-- 3. Entities (Vendors, Tenders, Persons, Organizations) - REVISED
 CREATE TABLE entities (
-  entity_id TEXT PRIMARY KEY,       -- "Vendor_1", "ITF", "Case_286/04"
-  entity_type TEXT NOT NULL,        -- Vendor|Tender|Person|Organization|Case
-  attributes JSONB NOT NULL DEFAULT '{}', -- {existence: false, role: "owner", ...}
-  sources TEXT[] NOT NULL           -- Document IDs mentioning this entity
+  entity_id SERIAL PRIMARY KEY,      -- Changed to auto-increment
+  natural_id TEXT NOT NULL,   -- Original identifier (e.g., "Vendor_1")
+  title TEXT NOT NULL,               -- Added human-readable title
+  entity_type TEXT NOT NULL,
+  attributes JSONB NOT NULL DEFAULT '{}',
+  sources TEXT[] NOT NULL
 );
 
--- 4. Relationships Between Entities
+-- 4. Relationships - UPDATED to use new entity_id
 CREATE TABLE relationships (
   relationship_id SERIAL PRIMARY KEY,
-  source_id TEXT NOT NULL REFERENCES entities(entity_id),
-  target_id TEXT NOT NULL REFERENCES entities(entity_id),
-  label TEXT NOT NULL,              -- 'owns', 'submitted_bid', 'investigated'
-  attributes JSONB,                 -- {amount: "€15,919", date: "2003-01-01"}
-  sources TEXT[] NOT NULL           -- Document IDs mentioning this relationship
+  source_id INT NOT NULL REFERENCES entities(entity_id),
+  target_id INT NOT NULL REFERENCES entities(entity_id),
+  label TEXT NOT NULL,
+  attributes JSONB,
+  sources TEXT[] NOT NULL
 );
 
--- 5. Entity-Cluster Mapping
+-- 5. Entity-Cluster Mapping - UPDATED
 CREATE TABLE entity_clusters (
-  entity_id TEXT REFERENCES entities(entity_id),
-  cluster_id INTEGER REFERENCES clusters(cluster_id),
+  entity_id INT REFERENCES entities(entity_id),
+  cluster_id INT REFERENCES clusters(cluster_id),
   PRIMARY KEY (entity_id, cluster_id)
 );
 

@@ -32,6 +32,14 @@ class Database:
             'cluster_id': cluster_id
         }).execute()
 
+    def get_all_pdf_documents(self):    
+        """Fetches all documents of type 'pdf'."""
+        return self.client.table('documents').select('*').eq('doc_type', 'pdf').execute()
+    
+    def get_all_news_documents(self):
+        """Fetches all documents of type 'news'."""
+        return self.client.table('documents').select('*').eq('doc_type', 'news').execute()
+    
     def get_document(self, doc_id: str):
         """Fetches a document by its unique ID."""
         return self.client.table('documents').select('*').eq('doc_id', doc_id).execute()
@@ -67,32 +75,24 @@ class Database:
 
     # --- Entity Operations ---
 
-    def create_entity(self, entity_id: str, entity_type: str, attributes: Dict, sources: List[str]):
-        """Inserts a new entity."""
+    def create_entity(self, natural_id: str, title: str, entity_type: str, 
+                 attributes: Dict, sources: List[str]):
+        """Inserts a new entity with natural ID and title"""
         return self.client.table('entities').insert({
-            'entity_id': entity_id,
+            'natural_id': natural_id,
+            'title': title,
             'entity_type': entity_type,
             'attributes': attributes,
             'sources': sources
         }).execute()
 
-    def get_entity(self, entity_id: str):
-        """Fetches an entity by its unique ID."""
-        return self.client.table('entities').select('*').eq('entity_id', entity_id).execute()
-
-    def update_entity(self, entity_id: str, updates: dict):
-        """Updates an entity with new values."""
-        return self.client.table('entities').update(updates).eq('entity_id', entity_id).execute()
-
-    def delete_entity(self, entity_id: str):
-        """Deletes an entity by its unique ID."""
-        return self.client.table('entities').delete().eq('entity_id', entity_id).execute()
-
     # --- Relationship Operations ---
 
-    def create_relationship(self, source_id: str, target_id: str, label: str, 
-                             attributes: Optional[Dict] = None, sources: Optional[List[str]] = None):
-        """Inserts a new relationship between entities."""
+    def create_relationship(self, source_id: str, target_id: str, 
+                        label: str, attributes: Optional[Dict] = None, 
+                        sources: Optional[List[str]] = None):
+        """Helper to create relationship using natural IDs"""
+        
         return self.client.table('relationships').insert({
             'source_id': source_id,
             'target_id': target_id,
@@ -100,18 +100,6 @@ class Database:
             'attributes': attributes or {},
             'sources': sources or []
         }).execute()
-
-    def get_relationship(self, relationship_id: int):
-        """Fetches a relationship by its unique ID."""
-        return self.client.table('relationships').select('*').eq('relationship_id', relationship_id).execute()
-
-    def update_relationship(self, relationship_id: int, updates: dict):
-        """Updates a relationship with new values."""
-        return self.client.table('relationships').update(updates).eq('relationship_id', relationship_id).execute()
-
-    def delete_relationship(self, relationship_id: int):
-        """Deletes a relationship by its unique ID."""
-        return self.client.table('relationships').delete().eq('relationship_id', relationship_id).execute()
 
     # --- Entity-Cluster Mapping Operations ---
 
